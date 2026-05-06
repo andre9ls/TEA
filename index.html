@@ -2,82 +2,981 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>Balloon Task Dashboard</title>
-    <script src="https://unpkg.com/interactjs/dist/interact.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TEA - Registro ufficio</title>
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; overflow: hidden; }
-        .container { display: flex; height: 100vh; }
-        
-        /* Sidebar per aggiungere task */
-        .sidebar { width: 250px; background: #fff; padding: 20px; box-shadow: 2px 0 5px rgba(0,0,0,0.1); z-index: 10; }
-        
-        /* L'area dove volano i palloncini */
-        .canvas { flex-grow: 1; position: relative; overflow: hidden; background: white; }
-
-        /* Stile dei Palloncini */
-        .balloon {
-            width: 100px; height: 100px;
-            border-radius: 50%;
-            position: absolute;
-            display: flex; align-items: center; justify-content: center;
-            text-align: center; color: white; font-weight: bold; padding: 10px;
-            cursor: move; touch-action: none;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-            transition: transform 0.1s;
+        :root {
+            --bg: #f6f4ef;
+            --panel: #ffffff;
+            --ink: #202225;
+            --muted: #6d737a;
+            --line: #dedbd2;
+            --green: #2f7d5c;
+            --green-dark: #235e46;
+            --blue: #356fa8;
+            --amber: #b7791f;
+            --red: #b94a48;
+            --soft-green: #e7f3ed;
+            --soft-blue: #e8f0f8;
+            --soft-amber: #f7eddc;
+            --shadow: 0 16px 45px rgba(32, 34, 37, 0.09);
         }
-        .balloon:active { transform: scale(1.1); }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--ink);
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        button,
+        input,
+        textarea {
+            font: inherit;
+        }
+
+        button {
+            border: 0;
+            cursor: pointer;
+        }
+
+        .shell {
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 320px minmax(0, 1fr);
+        }
+
+        .sidebar {
+            background: #222831;
+            color: #f8f5ee;
+            padding: 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .brand {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .brand span {
+            color: #b9c1cb;
+            font-size: 0.92rem;
+        }
+
+        h1,
+        h2,
+        h3,
+        p {
+            margin: 0;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            line-height: 1;
+            letter-spacing: 0;
+        }
+
+        h2 {
+            font-size: 1.1rem;
+        }
+
+        h3 {
+            font-size: 0.92rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--muted);
+        }
+
+        .clock {
+            padding: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .clock strong {
+            display: block;
+            margin-top: 6px;
+            font-size: 2rem;
+        }
+
+        .settings {
+            display: grid;
+            gap: 12px;
+        }
+
+        label {
+            display: grid;
+            gap: 7px;
+            color: inherit;
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            background: #fff;
+            color: var(--ink);
+            padding: 11px 12px;
+            min-height: 44px;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 82px;
+        }
+
+        .sidebar input {
+            border-color: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+        }
+
+        .hint {
+            color: #b9c1cb;
+            font-size: 0.88rem;
+            line-height: 1.45;
+        }
+
+        .content {
+            padding: 28px;
+            display: grid;
+            gap: 22px;
+            align-content: start;
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+        }
+
+        .topbar p {
+            color: var(--muted);
+            margin-top: 6px;
+        }
+
+        .quick-actions,
+        .button-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .btn {
+            min-height: 42px;
+            border-radius: 6px;
+            padding: 0 15px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-weight: 800;
+            color: #fff;
+            background: var(--green);
+        }
+
+        .btn:hover {
+            background: var(--green-dark);
+        }
+
+        .btn.secondary {
+            background: #ece8df;
+            color: var(--ink);
+        }
+
+        .btn.secondary:hover {
+            background: #ddd7ca;
+        }
+
+        .btn.blue {
+            background: var(--blue);
+        }
+
+        .btn.red {
+            background: var(--red);
+        }
+
+        .btn svg {
+            width: 18px;
+            height: 18px;
+            flex: 0 0 auto;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .metric,
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+        }
+
+        .metric {
+            padding: 17px;
+            display: grid;
+            gap: 8px;
+            min-height: 118px;
+        }
+
+        .metric span {
+            color: var(--muted);
+            font-size: 0.85rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .metric strong {
+            font-size: 1.7rem;
+            line-height: 1.1;
+        }
+
+        .metric small {
+            color: var(--muted);
+        }
+
+        .positive {
+            color: var(--green);
+        }
+
+        .negative {
+            color: var(--red);
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(310px, 0.85fr) minmax(0, 1.4fr);
+            gap: 18px;
+        }
+
+        .panel {
+            padding: 18px;
+        }
+
+        .panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 13px;
+        }
+
+        .form-grid .wide {
+            grid-column: 1 / -1;
+        }
+
+        .status-strip {
+            display: grid;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 11px 12px;
+            border-radius: 6px;
+            background: #f8f7f3;
+            border: 1px solid var(--line);
+        }
+
+        .history-tools {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .history-tools input {
+            max-width: 190px;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 720px;
+            background: #fff;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--line);
+            vertical-align: top;
+        }
+
+        th {
+            color: var(--muted);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            background: #fbfaf7;
+        }
+
+        tr:last-child td {
+            border-bottom: 0;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            min-height: 28px;
+            border-radius: 999px;
+            padding: 0 10px;
+            font-weight: 800;
+            font-size: 0.85rem;
+        }
+
+        .badge.ok {
+            background: var(--soft-green);
+            color: var(--green);
+        }
+
+        .badge.low {
+            background: #f8e7e5;
+            color: var(--red);
+        }
+
+        .empty {
+            color: var(--muted);
+            padding: 26px 12px;
+            text-align: center;
+        }
+
+        .row-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            width: 34px;
+            height: 34px;
+            border-radius: 6px;
+            display: inline-grid;
+            place-items: center;
+            background: #f0ede6;
+            color: var(--ink);
+        }
+
+        .icon-btn:hover {
+            background: #e2dccc;
+        }
+
+        .icon-btn svg {
+            width: 17px;
+            height: 17px;
+        }
+
+        .toast {
+            position: fixed;
+            right: 18px;
+            bottom: 18px;
+            background: #222831;
+            color: #fff;
+            padding: 12px 14px;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            opacity: 0;
+            transform: translateY(12px);
+            pointer-events: none;
+            transition: opacity 0.18s ease, transform 0.18s ease;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        @media (max-width: 980px) {
+            .shell {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                padding: 22px;
+            }
+
+            .dashboard,
+            .layout {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 680px) {
+            .content {
+                padding: 18px;
+            }
+
+            .topbar,
+            .history-tools,
+            .panel-head {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .dashboard,
+            .layout,
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .history-tools input {
+                max-width: none;
+            }
+        }
     </style>
 </head>
 <body>
+    <main class="shell">
+        <aside class="sidebar">
+            <section class="brand">
+                <h1>TEA</h1>
+                <span>Everyday office tracker</span>
+            </section>
 
-<div class="container">
-    <div class="sidebar">
-        <h2>Nuovo Task</h2>
-        <input type="text" id="taskName" placeholder="Cosa devi fare?"><br><br>
-        <select id="taskColor">
-            <option value="#ff6b6b">Urgente (Rosso)</option>
-            <option value="#4facfe">Normale (Blu)</option>
-            <option value="#6ab04c">Lungo termine (Verde)</option>
-        </select><br><br>
-        <button onclick="addBalloon()">Crea Palloncino</button>
-    </div>
-    <div class="canvas" id="canvas">
-        </div>
-</div>
+            <section class="clock" aria-live="polite">
+                <span id="todayLabel">Oggi</span>
+                <strong id="liveClock">--:--</strong>
+            </section>
 
-<script>
-    function addBalloon() {
-        const name = document.getElementById('taskName').value;
-        const color = document.getElementById('taskColor').value;
-        if(!name) return;
+            <section class="settings">
+                <h2>Impostazioni</h2>
+                <label>
+                    Ore richieste al giorno
+                    <input id="targetHours" type="number" min="1" max="14" step="0.25" value="8">
+                </label>
+                <label>
+                    Pausa standard
+                    <input id="defaultBreak" type="number" min="0" max="240" step="5" value="60">
+                </label>
+                <button class="btn secondary" id="saveSettings" type="button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4Zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6Zm3-10H5V5h10v4Z"/></svg>
+                    Salva
+                </button>
+                <p class="hint">I dati restano in questo browser. In seguito possiamo aggiungere backup, calendario e sincronizzazione.</p>
+            </section>
+        </aside>
 
-        const b = document.createElement('div');
-        b.className = 'balloon';
-        b.innerText = name;
-        b.style.backgroundColor = color;
-        // Posizione iniziale casuale
-        b.style.left = Math.random() * 500 + 'px';
-        b.style.top = Math.random() * 500 + 'px';
+        <section class="content">
+            <header class="topbar">
+                <div>
+                    <h2>Registro entrata e uscita</h2>
+                    <p>Tieni sotto controllo ore lavorate, extra time e giornate da completare.</p>
+                </div>
+                <div class="quick-actions">
+                    <button class="btn" id="stampIn" type="button">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2Zm1 11.414V7h-2v7.414l4.293 4.293 1.414-1.414L13 13.414Z"/></svg>
+                        Entrata ora
+                    </button>
+                    <button class="btn blue" id="stampOut" type="button">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19 3h-8v2h8v14h-8v2h8a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2ZM10.707 15.707 9.293 14.293 11.586 12H3v-2h8.586L9.293 7.707l1.414-1.414L15.414 11l-4.707 4.707Z"/></svg>
+                        Uscita ora
+                    </button>
+                </div>
+            </header>
 
-        document.getElementById('canvas').appendChild(b);
-        document.getElementById('taskName').value = '';
-    }
+            <section class="dashboard" aria-label="Dashboard">
+                <article class="metric">
+                    <span>Oggi</span>
+                    <strong id="todayWorked">0h 00m</strong>
+                    <small id="todayBalance">Nessun dato</small>
+                </article>
+                <article class="metric">
+                    <span>Settimana</span>
+                    <strong id="weekWorked">0h 00m</strong>
+                    <small id="weekBalance">Saldo 0h 00m</small>
+                </article>
+                <article class="metric">
+                    <span>Mese</span>
+                    <strong id="monthWorked">0h 00m</strong>
+                    <small id="monthBalance">Saldo 0h 00m</small>
+                </article>
+                <article class="metric">
+                    <span>Giorni registrati</span>
+                    <strong id="daysCount">0</strong>
+                    <small id="averageDay">Media 0h 00m</small>
+                </article>
+            </section>
 
-    // Rende i palloncini trascinabili
-    interact('.balloon').draggable({
-        listeners: {
-            move (event) {
-                var target = event.target
-                var x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx
-                var y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy
+            <section class="layout">
+                <article class="panel">
+                    <div class="panel-head">
+                        <h3>Giornata</h3>
+                        <button class="btn secondary" id="newDay" type="button">Nuovo</button>
+                    </div>
 
-                target.style.transform = 'translate(' + x + 'px, ' + y + 'px)'
-                target.setAttribute('data-x', x)
-                target.setAttribute('data-y', y)
-            }
+                    <form id="entryForm" class="form-grid">
+                        <label class="wide">
+                            Data
+                            <input id="entryDate" type="date" required>
+                        </label>
+                        <label>
+                            Entrata
+                            <input id="entryIn" type="time" required>
+                        </label>
+                        <label>
+                            Uscita
+                            <input id="entryOut" type="time">
+                        </label>
+                        <label>
+                            Pausa minuti
+                            <input id="entryBreak" type="number" min="0" max="240" step="5">
+                        </label>
+                        <label>
+                            Ore target
+                            <input id="entryTarget" type="number" min="1" max="14" step="0.25">
+                        </label>
+                        <label class="wide">
+                            Note
+                            <textarea id="entryNote" placeholder="Riunioni, smart working, permessi..."></textarea>
+                        </label>
+                        <div class="button-row wide">
+                            <button class="btn" type="submit">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17Z"/></svg>
+                                Salva giornata
+                            </button>
+                            <button class="btn secondary" id="deleteEntry" type="button">Elimina</button>
+                        </div>
+                    </form>
+
+                    <div class="status-strip">
+                        <div class="status-item">
+                            <span>Ore nette</span>
+                            <strong id="formWorked">0h 00m</strong>
+                        </div>
+                        <div class="status-item">
+                            <span>Saldo giornata</span>
+                            <strong id="formBalance">0h 00m</strong>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="panel">
+                    <div class="history-tools">
+                        <div>
+                            <h3>Storico</h3>
+                            <p class="hint" id="historyRange">Mese corrente</p>
+                        </div>
+                        <div class="quick-actions">
+                            <input id="monthFilter" type="month">
+                            <button class="btn secondary" id="exportCsv" type="button">CSV</button>
+                        </div>
+                    </div>
+
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Entrata</th>
+                                    <th>Uscita</th>
+                                    <th>Nette</th>
+                                    <th>Saldo</th>
+                                    <th>Note</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyBody"></tbody>
+                        </table>
+                    </div>
+                </article>
+            </section>
+        </section>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script>
+        const STORAGE_KEY = "tea-office-tracker";
+        const SETTINGS_KEY = "tea-office-settings";
+        const weekdays = ["Domenica", "Lunedi", "Martedi", "Mercoledi", "Giovedi", "Venerdi", "Sabato"];
+        const state = {
+            entries: [],
+            settings: { targetHours: 8, defaultBreak: 60 },
+            selectedDate: todayISO()
+        };
+
+        const els = {
+            liveClock: document.getElementById("liveClock"),
+            todayLabel: document.getElementById("todayLabel"),
+            targetHours: document.getElementById("targetHours"),
+            defaultBreak: document.getElementById("defaultBreak"),
+            entryDate: document.getElementById("entryDate"),
+            entryIn: document.getElementById("entryIn"),
+            entryOut: document.getElementById("entryOut"),
+            entryBreak: document.getElementById("entryBreak"),
+            entryTarget: document.getElementById("entryTarget"),
+            entryNote: document.getElementById("entryNote"),
+            entryForm: document.getElementById("entryForm"),
+            formWorked: document.getElementById("formWorked"),
+            formBalance: document.getElementById("formBalance"),
+            todayWorked: document.getElementById("todayWorked"),
+            todayBalance: document.getElementById("todayBalance"),
+            weekWorked: document.getElementById("weekWorked"),
+            weekBalance: document.getElementById("weekBalance"),
+            monthWorked: document.getElementById("monthWorked"),
+            monthBalance: document.getElementById("monthBalance"),
+            daysCount: document.getElementById("daysCount"),
+            averageDay: document.getElementById("averageDay"),
+            historyBody: document.getElementById("historyBody"),
+            monthFilter: document.getElementById("monthFilter"),
+            historyRange: document.getElementById("historyRange"),
+            toast: document.getElementById("toast")
+        };
+
+        function todayISO() {
+            return new Date().toISOString().slice(0, 10);
         }
-    })
-</script>
 
+        function currentTime() {
+            return new Date().toTimeString().slice(0, 5);
+        }
+
+        function minutesFromTime(value) {
+            if (!value) return null;
+            const [hours, minutes] = value.split(":").map(Number);
+            return hours * 60 + minutes;
+        }
+
+        function minutesToDuration(minutes) {
+            const sign = minutes < 0 ? "-" : "";
+            const abs = Math.abs(Math.round(minutes));
+            return `${sign}${Math.floor(abs / 60)}h ${String(abs % 60).padStart(2, "0")}m`;
+        }
+
+        function parseMonth(date) {
+            return date.slice(0, 7);
+        }
+
+        function getEntry(date) {
+            return state.entries.find((entry) => entry.date === date);
+        }
+
+        function workedMinutes(entry) {
+            if (!entry || !entry.in || !entry.out) return 0;
+            const start = minutesFromTime(entry.in);
+            const end = minutesFromTime(entry.out);
+            if (start === null || end === null || end <= start) return 0;
+            return Math.max(0, end - start - Number(entry.breakMinutes || 0));
+        }
+
+        function isComplete(entry) {
+            return Boolean(entry?.in && entry?.out && workedMinutes(entry) > 0);
+        }
+
+        function balanceMinutes(entry) {
+            return workedMinutes(entry) - Number(entry.targetHours || state.settings.targetHours) * 60;
+        }
+
+        function saveAll() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state.entries));
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings));
+        }
+
+        function loadAll() {
+            state.entries = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+            state.settings = {
+                ...state.settings,
+                ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}")
+            };
+            els.targetHours.value = state.settings.targetHours;
+            els.defaultBreak.value = state.settings.defaultBreak;
+            els.monthFilter.value = parseMonth(todayISO());
+        }
+
+        function upsertEntry(entry) {
+            const index = state.entries.findIndex((item) => item.date === entry.date);
+            if (index >= 0) {
+                state.entries[index] = entry;
+            } else {
+                state.entries.push(entry);
+            }
+            state.entries.sort((a, b) => b.date.localeCompare(a.date));
+            saveAll();
+        }
+
+        function selectDate(date) {
+            state.selectedDate = date;
+            const existing = getEntry(date);
+            els.entryDate.value = date;
+            els.entryIn.value = existing?.in || "";
+            els.entryOut.value = existing?.out || "";
+            els.entryBreak.value = existing?.breakMinutes ?? state.settings.defaultBreak;
+            els.entryTarget.value = existing?.targetHours ?? state.settings.targetHours;
+            els.entryNote.value = existing?.note || "";
+            renderFormPreview();
+        }
+
+        function readFormEntry() {
+            return {
+                date: els.entryDate.value,
+                in: els.entryIn.value,
+                out: els.entryOut.value,
+                breakMinutes: Number(els.entryBreak.value || 0),
+                targetHours: Number(els.entryTarget.value || state.settings.targetHours),
+                note: els.entryNote.value.trim()
+            };
+        }
+
+        function renderFormPreview() {
+            const entry = readFormEntry();
+            const balance = balanceMinutes(entry);
+            els.formWorked.textContent = minutesToDuration(workedMinutes(entry));
+            els.formBalance.textContent = minutesToDuration(balance);
+            els.formBalance.className = balance >= 0 ? "positive" : "negative";
+        }
+
+        function aggregate(entries) {
+            const complete = entries.filter(isComplete);
+            const worked = complete.reduce((sum, entry) => sum + workedMinutes(entry), 0);
+            const balance = complete.reduce((sum, entry) => sum + balanceMinutes(entry), 0);
+            return { worked, balance, days: complete.length };
+        }
+
+        function weekBounds(dateText) {
+            const date = new Date(`${dateText}T12:00:00`);
+            const day = date.getDay() || 7;
+            const start = new Date(date);
+            start.setDate(date.getDate() - day + 1);
+            const end = new Date(start);
+            end.setDate(start.getDate() + 6);
+            return {
+                start: start.toISOString().slice(0, 10),
+                end: end.toISOString().slice(0, 10)
+            };
+        }
+
+        function renderDashboard() {
+            const today = getEntry(todayISO());
+            const todayComplete = isComplete(today);
+            const todayBalanceValue = todayComplete ? balanceMinutes(today) : 0;
+            els.todayWorked.textContent = minutesToDuration(workedMinutes(today));
+            els.todayBalance.textContent = todayComplete ? `Saldo ${minutesToDuration(todayBalanceValue)}` : today?.in ? "Giornata in corso" : "Nessun dato";
+            els.todayBalance.className = todayBalanceValue >= 0 ? "positive" : "negative";
+
+            const bounds = weekBounds(todayISO());
+            const weekEntries = state.entries.filter((entry) => entry.date >= bounds.start && entry.date <= bounds.end);
+            const monthEntries = state.entries.filter((entry) => parseMonth(entry.date) === parseMonth(todayISO()));
+            const all = aggregate(state.entries);
+            const week = aggregate(weekEntries);
+            const month = aggregate(monthEntries);
+
+            els.weekWorked.textContent = minutesToDuration(week.worked);
+            els.weekBalance.textContent = `Saldo ${minutesToDuration(week.balance)}`;
+            els.weekBalance.className = week.balance >= 0 ? "positive" : "negative";
+            els.monthWorked.textContent = minutesToDuration(month.worked);
+            els.monthBalance.textContent = `Saldo ${minutesToDuration(month.balance)}`;
+            els.monthBalance.className = month.balance >= 0 ? "positive" : "negative";
+            els.daysCount.textContent = String(state.entries.length);
+            els.averageDay.textContent = `Media ${minutesToDuration(all.days ? all.worked / all.days : 0)}`;
+        }
+
+        function renderHistory() {
+            const filter = els.monthFilter.value;
+            const rows = state.entries.filter((entry) => !filter || parseMonth(entry.date) === filter);
+            els.historyRange.textContent = filter ? `Mese ${filter}` : "Tutto lo storico";
+
+            if (!rows.length) {
+                els.historyBody.innerHTML = `<tr><td colspan="7" class="empty">Nessuna giornata registrata.</td></tr>`;
+                return;
+            }
+
+            els.historyBody.innerHTML = rows.map((entry) => {
+                const balance = balanceMinutes(entry);
+                const badgeClass = balance >= 0 ? "ok" : "low";
+                const note = entry.note ? escapeHTML(entry.note) : "-";
+                const balanceLabel = isComplete(entry) ? minutesToDuration(balance) : "In corso";
+                return `
+                    <tr>
+                        <td><strong>${formatDate(entry.date)}</strong></td>
+                        <td>${entry.in || "-"}</td>
+                        <td>${entry.out || "-"}</td>
+                        <td>${minutesToDuration(workedMinutes(entry))}</td>
+                        <td><span class="badge ${badgeClass}">${balanceLabel}</span></td>
+                        <td>${note}</td>
+                        <td>
+                            <div class="row-actions">
+                                <button class="icon-btn" type="button" title="Modifica" aria-label="Modifica ${entry.date}" data-edit="${entry.date}">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25ZM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.33a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.83Z"/></svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join("");
+        }
+
+        function formatDate(dateText) {
+            const date = new Date(`${dateText}T12:00:00`);
+            return `${weekdays[date.getDay()]} ${dateText.slice(8, 10)}/${dateText.slice(5, 7)}`;
+        }
+
+        function escapeHTML(value) {
+            return value.replace(/[&<>"']/g, (char) => ({
+                "&": "&amp;",
+                "<": "&lt;",
+                ">": "&gt;",
+                '"': "&quot;",
+                "'": "&#39;"
+            })[char]);
+        }
+
+        function renderAll() {
+            renderDashboard();
+            renderHistory();
+            renderFormPreview();
+        }
+
+        function toast(message) {
+            els.toast.textContent = message;
+            els.toast.classList.add("show");
+            window.clearTimeout(toast.timer);
+            toast.timer = window.setTimeout(() => els.toast.classList.remove("show"), 2200);
+        }
+
+        function updateClock() {
+            const now = new Date();
+            els.liveClock.textContent = now.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+            els.todayLabel.textContent = `${weekdays[now.getDay()]} ${now.toLocaleDateString("it-IT")}`;
+        }
+
+        document.getElementById("saveSettings").addEventListener("click", () => {
+            state.settings.targetHours = Number(els.targetHours.value || 8);
+            state.settings.defaultBreak = Number(els.defaultBreak.value || 0);
+            els.entryTarget.value = els.entryTarget.value || state.settings.targetHours;
+            els.entryBreak.value = els.entryBreak.value || state.settings.defaultBreak;
+            saveAll();
+            renderAll();
+            toast("Impostazioni salvate");
+        });
+
+        document.getElementById("stampIn").addEventListener("click", () => {
+            const date = todayISO();
+            const existing = getEntry(date) || {
+                date,
+                breakMinutes: state.settings.defaultBreak,
+                targetHours: state.settings.targetHours,
+                note: ""
+            };
+            existing.in = currentTime();
+            upsertEntry(existing);
+            selectDate(date);
+            renderAll();
+            toast("Entrata registrata");
+        });
+
+        document.getElementById("stampOut").addEventListener("click", () => {
+            const date = todayISO();
+            const existing = getEntry(date) || {
+                date,
+                in: "",
+                breakMinutes: state.settings.defaultBreak,
+                targetHours: state.settings.targetHours,
+                note: ""
+            };
+            existing.out = currentTime();
+            upsertEntry(existing);
+            selectDate(date);
+            renderAll();
+            toast("Uscita registrata");
+        });
+
+        document.getElementById("newDay").addEventListener("click", () => {
+            selectDate(todayISO());
+            toast("Pronto per oggi");
+        });
+
+        document.getElementById("deleteEntry").addEventListener("click", () => {
+            const date = els.entryDate.value;
+            if (!getEntry(date)) return toast("Nessuna giornata da eliminare");
+            if (!confirm(`Eliminare la giornata ${date}?`)) return;
+            state.entries = state.entries.filter((entry) => entry.date !== date);
+            saveAll();
+            selectDate(todayISO());
+            renderAll();
+            toast("Giornata eliminata");
+        });
+
+        els.entryForm.addEventListener("submit", (event) => {
+            event.preventDefault();
+            const entry = readFormEntry();
+            upsertEntry(entry);
+            selectDate(entry.date);
+            renderAll();
+            toast("Giornata salvata");
+        });
+
+        ["input", "change"].forEach((eventName) => {
+            els.entryForm.addEventListener(eventName, renderFormPreview);
+        });
+
+        els.entryDate.addEventListener("change", () => selectDate(els.entryDate.value));
+        els.monthFilter.addEventListener("change", renderHistory);
+        els.historyBody.addEventListener("click", (event) => {
+            const button = event.target.closest("[data-edit]");
+            if (!button) return;
+            selectDate(button.dataset.edit);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+
+        document.getElementById("exportCsv").addEventListener("click", () => {
+            const header = ["data", "entrata", "uscita", "pausa_minuti", "ore_nette", "saldo", "note"];
+            const rows = state.entries.map((entry) => [
+                entry.date,
+                entry.in,
+                entry.out,
+                entry.breakMinutes,
+                minutesToDuration(workedMinutes(entry)),
+                minutesToDuration(balanceMinutes(entry)),
+                entry.note || ""
+            ]);
+            const csv = [header, ...rows].map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+            const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `tea-registro-${todayISO()}.csv`;
+            link.click();
+            URL.revokeObjectURL(url);
+        });
+
+        loadAll();
+        selectDate(todayISO());
+        renderAll();
+        updateClock();
+        window.setInterval(updateClock, 30000);
+    </script>
 </body>
 </html>
