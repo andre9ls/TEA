@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TEA - Registro ufficio</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --bg: #f6f4ef;
@@ -112,6 +113,34 @@
             gap: 12px;
         }
 
+        .sync-card {
+            display: grid;
+            gap: 12px;
+            padding: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .sync-card h2 {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .sync-status {
+            display: inline-flex;
+            align-items: center;
+            min-height: 28px;
+            border-radius: 999px;
+            padding: 0 10px;
+            background: rgba(255, 255, 255, 0.12);
+            color: #f8f5ee;
+            font-size: 0.78rem;
+            font-weight: 800;
+        }
+
         label {
             display: grid;
             gap: 7px;
@@ -140,6 +169,10 @@
             border-color: rgba(255, 255, 255, 0.2);
             background: rgba(255, 255, 255, 0.08);
             color: #fff;
+        }
+
+        .sidebar input::placeholder {
+            color: rgba(255, 255, 255, 0.56);
         }
 
         .hint {
@@ -292,6 +325,28 @@
             display: grid;
             gap: 10px;
             margin-top: 15px;
+        }
+
+        details.schema {
+            margin-top: 16px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: #fbfaf7;
+        }
+
+        details.schema summary {
+            cursor: pointer;
+            padding: 13px;
+            font-weight: 800;
+        }
+
+        pre {
+            overflow-x: auto;
+            margin: 0;
+            padding: 0 13px 13px;
+            color: #34383d;
+            font-size: 0.82rem;
+            line-height: 1.45;
         }
 
         .status-item {
@@ -487,6 +542,29 @@
                 </button>
                 <p class="hint">I dati restano in questo browser. In seguito possiamo aggiungere backup, calendario e sincronizzazione.</p>
             </section>
+
+            <section class="sync-card">
+                <h2>Cloud sync <span class="sync-status" id="syncStatus">Locale</span></h2>
+                <label>
+                    Supabase URL
+                    <input id="supabaseUrl" type="url" placeholder="https://...supabase.co">
+                </label>
+                <label>
+                    Supabase anon key
+                    <input id="supabaseAnonKey" type="password" placeholder="eyJ...">
+                </label>
+                <button class="btn secondary" id="saveCloudConfig" type="button">Salva cloud</button>
+                <label>
+                    Email login
+                    <input id="syncEmail" type="email" placeholder="you@example.com">
+                </label>
+                <div class="button-row">
+                    <button class="btn" id="signIn" type="button">Magic link</button>
+                    <button class="btn secondary" id="signOut" type="button">Esci</button>
+                    <button class="btn secondary" id="syncNow" type="button">Sincronizza</button>
+                </div>
+                <p class="hint" id="syncHint">Configura Supabase per usare gli stessi dati su tutti i laptop.</p>
+            </section>
         </aside>
 
         <section class="content">
@@ -611,6 +689,50 @@
                             <tbody id="historyBody"></tbody>
                         </table>
                     </div>
+
+                    <details class="schema">
+                        <summary>Schema Supabase</summary>
+                        <pre id="schemaSql">create table if not exists public.tea_entries (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid(),
+  date date not null,
+  in_time text,
+  out_time text,
+  break_minutes integer not null default 0,
+  target_hours numeric not null default 8,
+  note text not null default '',
+  updated_at timestamptz not null default now(),
+  unique (user_id, date)
+);
+
+alter table public.tea_entries enable row level security;
+
+drop policy if exists "tea entries select own" on public.tea_entries;
+drop policy if exists "tea entries insert own" on public.tea_entries;
+drop policy if exists "tea entries update own" on public.tea_entries;
+drop policy if exists "tea entries delete own" on public.tea_entries;
+
+create policy "tea entries select own"
+on public.tea_entries for select
+to authenticated
+using (auth.uid() = user_id);
+
+create policy "tea entries insert own"
+on public.tea_entries for insert
+to authenticated
+with check (auth.uid() = user_id);
+
+create policy "tea entries update own"
+on public.tea_entries for update
+to authenticated
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+create policy "tea entries delete own"
+on public.tea_entries for delete
+to authenticated
+using (auth.uid() = user_id);</pre>
+                    </details>
                 </article>
             </section>
         </section>
@@ -621,11 +743,13 @@
     <script>
         const STORAGE_KEY = "tea-office-tracker";
         const SETTINGS_KEY = "tea-office-settings";
+        const CLOUD_CONFIG_KEY = "tea-office-cloud-config";
         const weekdays = ["Domenica", "Lunedi", "Martedi", "Mercoledi", "Giovedi", "Venerdi", "Sabato"];
         const state = {
             entries: [],
             settings: { targetHours: 8, defaultBreak: 60 },
-            selectedDate: todayISO()
+            selectedDate: todayISO(),
+            sync: { client: null, user: null, config: null, busy: false }
         };
 
         const els = {
@@ -653,7 +777,12 @@
             historyBody: document.getElementById("historyBody"),
             monthFilter: document.getElementById("monthFilter"),
             historyRange: document.getElementById("historyRange"),
-            toast: document.getElementById("toast")
+            toast: document.getElementById("toast"),
+            supabaseUrl: document.getElementById("supabaseUrl"),
+            supabaseAnonKey: document.getElementById("supabaseAnonKey"),
+            syncEmail: document.getElementById("syncEmail"),
+            syncStatus: document.getElementById("syncStatus"),
+            syncHint: document.getElementById("syncHint")
         };
 
         function todayISO() {
@@ -716,6 +845,143 @@
             els.monthFilter.value = parseMonth(todayISO());
         }
 
+        function loadCloudConfig() {
+            const config = JSON.parse(localStorage.getItem(CLOUD_CONFIG_KEY) || "null");
+            state.sync.config = config;
+            els.supabaseUrl.value = config?.url || "";
+            els.supabaseAnonKey.value = config?.anonKey || "";
+            if (!config?.url || !config?.anonKey) {
+                state.sync.client = null;
+                renderSyncState("Locale", "Configura Supabase per sincronizzare i dati.");
+                return;
+            }
+            if (!window.supabase?.createClient) {
+                renderSyncState("Offline", "La libreria Supabase non e disponibile.");
+                return;
+            }
+            state.sync.client = window.supabase.createClient(config.url, config.anonKey);
+        }
+
+        function renderSyncState(label, hint) {
+            if (label) els.syncStatus.textContent = label;
+            if (hint) els.syncHint.textContent = hint;
+        }
+
+        async function initCloud() {
+            loadCloudConfig();
+            if (!state.sync.client) return;
+            try {
+                const { data, error } = await state.sync.client.auth.getSession();
+                if (error) throw error;
+                state.sync.user = data.session?.user || null;
+                state.sync.client.auth.onAuthStateChange((_event, session) => {
+                    state.sync.user = session?.user || null;
+                    if (state.sync.user) {
+                        renderSyncState("Cloud", `Connesso come ${state.sync.user.email}`);
+                        syncAll();
+                    } else {
+                        renderSyncState("Locale", "Accesso cloud non attivo.");
+                    }
+                });
+                if (state.sync.user) {
+                    renderSyncState("Cloud", `Connesso come ${state.sync.user.email}`);
+                    await syncAll();
+                } else {
+                    renderSyncState("Pronto", "Invia un magic link per attivare la sincronizzazione.");
+                }
+            } catch (error) {
+                renderSyncState("Errore", error.message);
+            }
+        }
+
+        function entryToRow(entry) {
+            return {
+                user_id: state.sync.user.id,
+                date: entry.date,
+                in_time: entry.in || null,
+                out_time: entry.out || null,
+                break_minutes: Number(entry.breakMinutes || 0),
+                target_hours: Number(entry.targetHours || state.settings.targetHours),
+                note: entry.note || "",
+                updated_at: new Date().toISOString()
+            };
+        }
+
+        function rowToEntry(row) {
+            return {
+                date: row.date,
+                in: row.in_time || "",
+                out: row.out_time || "",
+                breakMinutes: Number(row.break_minutes || 0),
+                targetHours: Number(row.target_hours || state.settings.targetHours),
+                note: row.note || ""
+            };
+        }
+
+        async function syncEntryToCloud(entry) {
+            if (!state.sync.client || !state.sync.user || state.sync.busy) return;
+            try {
+                const { error } = await state.sync.client
+                    .from("tea_entries")
+                    .upsert(entryToRow(entry), { onConflict: "user_id,date" });
+                if (error) throw error;
+                renderSyncState("Cloud", "Ultima modifica sincronizzata.");
+            } catch (error) {
+                renderSyncState("Errore", error.message);
+            }
+        }
+
+        async function deleteCloudEntry(date) {
+            if (!state.sync.client || !state.sync.user) return;
+            try {
+                const { error } = await state.sync.client
+                    .from("tea_entries")
+                    .delete()
+                    .eq("user_id", state.sync.user.id)
+                    .eq("date", date);
+                if (error) throw error;
+            } catch (error) {
+                renderSyncState("Errore", error.message);
+            }
+        }
+
+        async function pushAllToCloud() {
+            if (!state.sync.client || !state.sync.user || !state.entries.length) return;
+            const rows = state.entries.map(entryToRow);
+            const { error } = await state.sync.client
+                .from("tea_entries")
+                .upsert(rows, { onConflict: "user_id,date" });
+            if (error) throw error;
+        }
+
+        async function pullCloudEntries() {
+            if (!state.sync.client || !state.sync.user) return;
+            const { data, error } = await state.sync.client
+                .from("tea_entries")
+                .select("*")
+                .order("date", { ascending: false });
+            if (error) throw error;
+            state.entries = (data || []).map(rowToEntry);
+            saveAll();
+            selectDate(state.selectedDate || todayISO());
+            renderAll();
+        }
+
+        async function syncAll() {
+            if (!state.sync.client || !state.sync.user || state.sync.busy) return;
+            state.sync.busy = true;
+            renderSyncState("Sync", "Sincronizzazione in corso...");
+            try {
+                await pushAllToCloud();
+                await pullCloudEntries();
+                renderSyncState("Cloud", `Sincronizzato come ${state.sync.user.email}`);
+            } catch (error) {
+                renderSyncState("Errore", error.message);
+            } finally {
+                state.sync.busy = false;
+            }
+        }
+
         function upsertEntry(entry) {
             const index = state.entries.findIndex((item) => item.date === entry.date);
             if (index >= 0) {
@@ -725,6 +991,7 @@
             }
             state.entries.sort((a, b) => b.date.localeCompare(a.date));
             saveAll();
+            syncEntryToCloud(entry);
         }
 
         function selectDate(date) {
@@ -924,6 +1191,7 @@
             if (!confirm(`Eliminare la giornata ${date}?`)) return;
             state.entries = state.entries.filter((entry) => entry.date !== date);
             saveAll();
+            deleteCloudEntry(date);
             selectDate(todayISO());
             renderAll();
             toast("Giornata eliminata");
@@ -951,6 +1219,50 @@
             window.scrollTo({ top: 0, behavior: "smooth" });
         });
 
+        document.getElementById("saveCloudConfig").addEventListener("click", async () => {
+            const config = {
+                url: els.supabaseUrl.value.trim(),
+                anonKey: els.supabaseAnonKey.value.trim()
+            };
+            if (!config.url || !config.anonKey) return toast("Inserisci URL e anon key Supabase");
+            localStorage.setItem(CLOUD_CONFIG_KEY, JSON.stringify(config));
+            renderSyncState("Pronto", "Configurazione cloud salvata.");
+            await initCloud();
+            toast("Cloud salvato");
+        });
+
+        document.getElementById("signIn").addEventListener("click", async () => {
+            if (!state.sync.client) loadCloudConfig();
+            if (!state.sync.client) return toast("Configura prima Supabase");
+            const email = els.syncEmail.value.trim();
+            if (!email) return toast("Inserisci la tua email");
+            try {
+                const { error } = await state.sync.client.auth.signInWithOtp({
+                    email,
+                    options: { emailRedirectTo: window.location.href.split("#")[0] }
+                });
+                if (error) throw error;
+                renderSyncState("Email", "Magic link inviato. Aprilo da questo browser.");
+                toast("Magic link inviato");
+            } catch (error) {
+                renderSyncState("Errore", error.message);
+            }
+        });
+
+        document.getElementById("signOut").addEventListener("click", async () => {
+            if (!state.sync.client) return;
+            await state.sync.client.auth.signOut();
+            state.sync.user = null;
+            renderSyncState("Locale", "Accesso cloud non attivo.");
+            toast("Logout completato");
+        });
+
+        document.getElementById("syncNow").addEventListener("click", async () => {
+            if (!state.sync.client || !state.sync.user) return toast("Accedi al cloud prima di sincronizzare");
+            await syncAll();
+            toast("Sincronizzazione completata");
+        });
+
         document.getElementById("exportCsv").addEventListener("click", () => {
             const header = ["data", "entrata", "uscita", "pausa_minuti", "ore_nette", "saldo", "note"];
             const rows = state.entries.map((entry) => [
@@ -975,6 +1287,7 @@
         loadAll();
         selectDate(todayISO());
         renderAll();
+        initCloud();
         updateClock();
         window.setInterval(updateClock, 30000);
     </script>
