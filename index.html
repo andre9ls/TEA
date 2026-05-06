@@ -108,10 +108,6 @@
             font-size: 2rem;
         }
 
-        .settings {
-            display: grid;
-            gap: 12px;
-        }
 
         .sync-card {
             display: grid;
@@ -526,23 +522,6 @@
                 <strong id="liveClock">--:--</strong>
             </section>
 
-            <section class="settings">
-                <h2>Impostazioni</h2>
-                <label>
-                    Ore richieste al giorno
-                    <input id="targetHours" type="number" min="1" max="14" step="0.25" value="8">
-                </label>
-                <label>
-                    Pausa standard
-                    <input id="defaultBreak" type="number" min="0" max="240" step="5" value="60">
-                </label>
-                <button class="btn secondary" id="saveSettings" type="button">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4Zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6Zm3-10H5V5h10v4Z"/></svg>
-                    Salva
-                </button>
-                <p class="hint">I dati restano in questo browser. In seguito possiamo aggiungere backup, calendario e sincronizzazione.</p>
-            </section>
-
             <section class="sync-card">
                 <h2>Cloud sync <span class="sync-status" id="syncStatus">Locale</span></h2>
                 <label>
@@ -568,7 +547,7 @@
                     <button class="btn secondary" id="signOut" type="button">Esci</button>
                     <button class="btn secondary" id="syncNow" type="button">Sincronizza</button>
                 </div>
-                <p class="hint" id="syncHint">Configura Supabase per usare gli stessi dati su tutti i laptop.</p>
+                <p class="hint" id="syncHint">Le giornate usano 8 ore richieste e 45 minuti di pausa come valori standard.</p>
             </section>
         </aside>
 
@@ -747,13 +726,13 @@ using (auth.uid() = user_id);</pre>
 
     <script>
         const STORAGE_KEY = "tea-office-tracker";
-        const SETTINGS_KEY = "tea-office-settings";
         const CLOUD_CONFIG_KEY = "tea-office-cloud-config";
+        const DEFAULT_TARGET_HOURS = 8;
+        const DEFAULT_BREAK_MINUTES = 45;
         const PUBLIC_APP_URL = "https://andre9ls.github.io/TEA/";
         const weekdays = ["Domenica", "Lunedi", "Martedi", "Mercoledi", "Giovedi", "Venerdi", "Sabato"];
         const state = {
             entries: [],
-            settings: { targetHours: 8, defaultBreak: 60 },
             selectedDate: todayISO(),
             sync: { client: null, user: null, config: null, busy: false }
         };
@@ -761,8 +740,6 @@ using (auth.uid() = user_id);</pre>
         const els = {
             liveClock: document.getElementById("liveClock"),
             todayLabel: document.getElementById("todayLabel"),
-            targetHours: document.getElementById("targetHours"),
-            defaultBreak: document.getElementById("defaultBreak"),
             entryDate: document.getElementById("entryDate"),
             entryIn: document.getElementById("entryIn"),
             entryOut: document.getElementById("entryOut"),
@@ -833,22 +810,15 @@ using (auth.uid() = user_id);</pre>
         }
 
         function balanceMinutes(entry) {
-            return workedMinutes(entry) - Number(entry.targetHours || state.settings.targetHours) * 60;
+            return workedMinutes(entry) - Number(entry.targetHours || DEFAULT_TARGET_HOURS) * 60;
         }
 
         function saveAll() {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(state.entries));
-            localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings));
         }
 
         function loadAll() {
             state.entries = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-            state.settings = {
-                ...state.settings,
-                ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}")
-            };
-            els.targetHours.value = state.settings.targetHours;
-            els.defaultBreak.value = state.settings.defaultBreak;
             els.monthFilter.value = parseMonth(todayISO());
         }
 
@@ -908,7 +878,7 @@ using (auth.uid() = user_id);</pre>
                 in_time: entry.in || null,
                 out_time: entry.out || null,
                 break_minutes: Number(entry.breakMinutes || 0),
-                target_hours: Number(entry.targetHours || state.settings.targetHours),
+                target_hours: Number(entry.targetHours || DEFAULT_TARGET_HOURS),
                 note: entry.note || "",
                 updated_at: new Date().toISOString()
             };
@@ -920,7 +890,7 @@ using (auth.uid() = user_id);</pre>
                 in: row.in_time || "",
                 out: row.out_time || "",
                 breakMinutes: Number(row.break_minutes || 0),
-                targetHours: Number(row.target_hours || state.settings.targetHours),
+                targetHours: Number(row.target_hours || DEFAULT_TARGET_HOURS),
                 note: row.note || ""
             };
         }
@@ -1007,8 +977,8 @@ using (auth.uid() = user_id);</pre>
             els.entryDate.value = date;
             els.entryIn.value = existing?.in || "";
             els.entryOut.value = existing?.out || "";
-            els.entryBreak.value = existing?.breakMinutes ?? state.settings.defaultBreak;
-            els.entryTarget.value = existing?.targetHours ?? state.settings.targetHours;
+            els.entryBreak.value = existing?.breakMinutes ?? DEFAULT_BREAK_MINUTES;
+            els.entryTarget.value = existing?.targetHours ?? DEFAULT_TARGET_HOURS;
             els.entryNote.value = existing?.note || "";
             renderFormPreview();
         }
@@ -1019,7 +989,7 @@ using (auth.uid() = user_id);</pre>
                 in: els.entryIn.value,
                 out: els.entryOut.value,
                 breakMinutes: Number(els.entryBreak.value || 0),
-                targetHours: Number(els.entryTarget.value || state.settings.targetHours),
+                targetHours: Number(els.entryTarget.value || DEFAULT_TARGET_HOURS),
                 note: els.entryNote.value.trim()
             };
         }
@@ -1146,22 +1116,13 @@ using (auth.uid() = user_id);</pre>
             els.todayLabel.textContent = `${weekdays[now.getDay()]} ${now.toLocaleDateString("it-IT")}`;
         }
 
-        document.getElementById("saveSettings").addEventListener("click", () => {
-            state.settings.targetHours = Number(els.targetHours.value || 8);
-            state.settings.defaultBreak = Number(els.defaultBreak.value || 0);
-            els.entryTarget.value = els.entryTarget.value || state.settings.targetHours;
-            els.entryBreak.value = els.entryBreak.value || state.settings.defaultBreak;
-            saveAll();
-            renderAll();
-            toast("Impostazioni salvate");
-        });
 
         document.getElementById("stampIn").addEventListener("click", () => {
             const date = todayISO();
             const existing = getEntry(date) || {
                 date,
-                breakMinutes: state.settings.defaultBreak,
-                targetHours: state.settings.targetHours,
+                breakMinutes: DEFAULT_BREAK_MINUTES,
+                targetHours: DEFAULT_TARGET_HOURS,
                 note: ""
             };
             existing.in = currentTime();
@@ -1176,8 +1137,8 @@ using (auth.uid() = user_id);</pre>
             const existing = getEntry(date) || {
                 date,
                 in: "",
-                breakMinutes: state.settings.defaultBreak,
-                targetHours: state.settings.targetHours,
+                breakMinutes: DEFAULT_BREAK_MINUTES,
+                targetHours: DEFAULT_TARGET_HOURS,
                 note: ""
             };
             existing.out = currentTime();
