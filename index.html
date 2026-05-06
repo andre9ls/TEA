@@ -555,11 +555,16 @@
                 </label>
                 <button class="btn secondary" id="saveCloudConfig" type="button">Salva cloud</button>
                 <label>
-                    Email login
-                    <input id="syncEmail" type="email" placeholder="you@example.com">
+                    Email
+                    <input id="syncEmail" type="email" autocomplete="email" placeholder="you@example.com">
+                </label>
+                <label>
+                    Password
+                    <input id="syncPassword" type="password" autocomplete="current-password" placeholder="Minimo 6 caratteri">
                 </label>
                 <div class="button-row">
-                    <button class="btn" id="signIn" type="button">Magic link</button>
+                    <button class="btn" id="signIn" type="button">Accedi</button>
+                    <button class="btn secondary" id="signUp" type="button">Crea account</button>
                     <button class="btn secondary" id="signOut" type="button">Esci</button>
                     <button class="btn secondary" id="syncNow" type="button">Sincronizza</button>
                 </div>
@@ -782,6 +787,7 @@ using (auth.uid() = user_id);</pre>
             supabaseUrl: document.getElementById("supabaseUrl"),
             supabaseAnonKey: document.getElementById("supabaseAnonKey"),
             syncEmail: document.getElementById("syncEmail"),
+            syncPassword: document.getElementById("syncPassword"),
             syncStatus: document.getElementById("syncStatus"),
             syncHint: document.getElementById("syncHint")
         };
@@ -888,7 +894,7 @@ using (auth.uid() = user_id);</pre>
                     renderSyncState("Cloud", `Connesso come ${state.sync.user.email}`);
                     await syncAll();
                 } else {
-                    renderSyncState("Pronto", "Invia un magic link per attivare la sincronizzazione.");
+                    renderSyncState("Pronto", "Accedi con email e password per attivare la sincronizzazione.");
                 }
             } catch (error) {
                 renderSyncState("Errore", error.message);
@@ -1232,19 +1238,50 @@ using (auth.uid() = user_id);</pre>
             toast("Cloud salvato");
         });
 
+        function readCredentials() {
+            return {
+                email: els.syncEmail.value.trim(),
+                password: els.syncPassword.value
+            };
+        }
+
         document.getElementById("signIn").addEventListener("click", async () => {
             if (!state.sync.client) loadCloudConfig();
             if (!state.sync.client) return toast("Configura prima Supabase");
-            const email = els.syncEmail.value.trim();
-            if (!email) return toast("Inserisci la tua email");
+            const { email, password } = readCredentials();
+            if (!email || !password) return toast("Inserisci email e password");
             try {
-                const { error } = await state.sync.client.auth.signInWithOtp({
+                const { error } = await state.sync.client.auth.signInWithPassword({ email, password });
+                if (error) throw error;
+                renderSyncState("Cloud", `Connesso come ${email}`);
+                toast("Accesso completato");
+                await syncAll();
+            } catch (error) {
+                renderSyncState("Errore", error.message);
+            }
+        });
+
+        document.getElementById("signUp").addEventListener("click", async () => {
+            if (!state.sync.client) loadCloudConfig();
+            if (!state.sync.client) return toast("Configura prima Supabase");
+            const { email, password } = readCredentials();
+            if (!email || !password) return toast("Inserisci email e password");
+            if (password.length < 6) return toast("La password deve avere almeno 6 caratteri");
+            try {
+                const { data, error } = await state.sync.client.auth.signUp({
                     email,
+                    password,
                     options: { emailRedirectTo: PUBLIC_APP_URL }
                 });
                 if (error) throw error;
-                renderSyncState("Email", "Magic link inviato. Aprilo da questo browser.");
-                toast("Magic link inviato");
+                if (data.session) {
+                    state.sync.user = data.user;
+                    renderSyncState("Cloud", `Account creato per ${email}`);
+                    await syncAll();
+                } else {
+                    renderSyncState("Email", "Controlla la mail per confermare account, poi accedi.");
+                }
+                toast("Account creato");
             } catch (error) {
                 renderSyncState("Errore", error.message);
             }
