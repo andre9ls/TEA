@@ -744,6 +744,7 @@ using (auth.uid() = user_id);</pre>
         const STORAGE_KEY = "tea-office-tracker";
         const SETTINGS_KEY = "tea-office-settings";
         const CLOUD_CONFIG_KEY = "tea-office-cloud-config";
+        const PUBLIC_APP_URL = "https://andre9ls.github.io/TEA/";
         const weekdays = ["Domenica", "Lunedi", "Martedi", "Mercoledi", "Giovedi", "Venerdi", "Sabato"];
         const state = {
             entries: [],
@@ -1239,7 +1240,7 @@ using (auth.uid() = user_id);</pre>
             try {
                 const { error } = await state.sync.client.auth.signInWithOtp({
                     email,
-                    options: { emailRedirectTo: window.location.href.split("#")[0] }
+                    options: { emailRedirectTo: PUBLIC_APP_URL }
                 });
                 if (error) throw error;
                 renderSyncState("Email", "Magic link inviato. Aprilo da questo browser.");
