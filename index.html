@@ -47,17 +47,6 @@
 
         .shell {
             min-height: 100vh;
-            display: grid;
-            grid-template-columns: 320px minmax(0, 1fr);
-        }
-
-        .sidebar {
-            background: #222831;
-            color: #f8f5ee;
-            padding: 28px;
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
         }
 
         .brand {
@@ -67,7 +56,7 @@
         }
 
         .brand span {
-            color: #b9c1cb;
+            color: var(--muted);
             font-size: 0.92rem;
         }
 
@@ -96,26 +85,56 @@
         }
 
         .clock {
-            padding: 18px;
-            border: 1px solid rgba(255, 255, 255, 0.16);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.05);
+            display: grid;
+            justify-items: end;
+            gap: 3px;
+            color: var(--muted);
+            min-width: 130px;
         }
 
         .clock strong {
             display: block;
-            margin-top: 6px;
-            font-size: 2rem;
+            color: var(--ink);
+            font-size: 1.25rem;
         }
 
+
+        .access-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 30;
+            display: grid;
+            place-items: center;
+            padding: 20px;
+            background: rgba(32, 34, 37, 0.46);
+        }
+
+        .access-modal[hidden] {
+            display: none;
+        }
+
+        .access-dialog {
+            width: min(430px, 100%);
+            max-height: calc(100vh - 40px);
+            overflow: auto;
+            border-radius: 8px;
+            background: #222831;
+            color: #f8f5ee;
+            box-shadow: var(--shadow);
+        }
+
+        .access-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 18px 18px 0;
+        }
 
         .sync-card {
             display: grid;
             gap: 12px;
-            padding: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.16);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.05);
+            padding: 18px;
         }
 
         .sync-card h2 {
@@ -161,13 +180,13 @@
             min-height: 82px;
         }
 
-        .sidebar input {
+        .sync-card input {
             border-color: rgba(255, 255, 255, 0.2);
             background: rgba(255, 255, 255, 0.08);
             color: #fff;
         }
 
-        .sidebar input::placeholder {
+        .sync-card input::placeholder {
             color: rgba(255, 255, 255, 0.56);
         }
 
@@ -178,6 +197,8 @@
         }
 
         .content {
+            width: min(1440px, 100%);
+            margin: 0 auto;
             padding: 28px;
             display: grid;
             gap: 22px;
@@ -189,6 +210,21 @@
             align-items: center;
             justify-content: space-between;
             gap: 18px;
+        }
+
+        .topbar-main {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            min-width: 0;
+        }
+
+        .topbar-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 10px;
+            flex-wrap: wrap;
         }
 
         .topbar p {
@@ -471,14 +507,6 @@
         }
 
         @media (max-width: 980px) {
-            .shell {
-                grid-template-columns: 1fr;
-            }
-
-            .sidebar {
-                padding: 22px;
-            }
-
             .dashboard,
             .layout {
                 grid-template-columns: 1fr 1fr;
@@ -491,10 +519,16 @@
             }
 
             .topbar,
+            .topbar-main,
+            .topbar-actions,
             .history-tools,
             .panel-head {
                 align-items: stretch;
                 flex-direction: column;
+            }
+
+            .clock {
+                justify-items: start;
             }
 
             .dashboard,
@@ -511,53 +545,24 @@
 </head>
 <body>
     <main class="shell">
-        <aside class="sidebar">
-            <section class="brand">
-                <h1>TEA</h1>
-                <span>Everyday office tracker</span>
-            </section>
-
-            <section class="clock" aria-live="polite">
-                <span id="todayLabel">Oggi</span>
-                <strong id="liveClock">--:--</strong>
-            </section>
-
-            <section class="sync-card">
-                <h2>Cloud sync <span class="sync-status" id="syncStatus">Locale</span></h2>
-                <label>
-                    Supabase URL
-                    <input id="supabaseUrl" type="url" placeholder="https://...supabase.co">
-                </label>
-                <label>
-                    Supabase anon key
-                    <input id="supabaseAnonKey" type="password" placeholder="eyJ...">
-                </label>
-                <button class="btn secondary" id="saveCloudConfig" type="button">Salva cloud</button>
-                <label>
-                    Email
-                    <input id="syncEmail" type="email" autocomplete="email" placeholder="you@example.com">
-                </label>
-                <label>
-                    Password
-                    <input id="syncPassword" type="password" autocomplete="current-password" placeholder="Minimo 6 caratteri">
-                </label>
-                <div class="button-row">
-                    <button class="btn" id="signIn" type="button">Accedi</button>
-                    <button class="btn secondary" id="signUp" type="button">Crea account</button>
-                    <button class="btn secondary" id="signOut" type="button">Esci</button>
-                    <button class="btn secondary" id="syncNow" type="button">Sincronizza</button>
-                </div>
-                <p class="hint" id="syncHint">Le giornate usano 8 ore richieste e 45 minuti di pausa come valori standard.</p>
-            </section>
-        </aside>
-
         <section class="content">
             <header class="topbar">
-                <div>
-                    <h2>Registro entrata e uscita</h2>
-                    <p>Tieni sotto controllo ore lavorate, extra time e giornate da completare.</p>
+                <div class="topbar-main">
+                    <section class="brand">
+                        <h1>TEA</h1>
+                        <span>Everyday office tracker</span>
+                    </section>
+                    <section class="clock" aria-live="polite">
+                        <span id="todayLabel">Oggi</span>
+                        <strong id="liveClock">--:--</strong>
+                    </section>
+                    <div>
+                        <h2>Registro entrata e uscita</h2>
+                        <p>Tieni sotto controllo ore lavorate, extra time e giornate da completare.</p>
+                    </div>
                 </div>
-                <div class="quick-actions">
+                <div class="topbar-actions">
+                    <button class="btn secondary" id="openAccess" type="button">Access</button>
                     <button class="btn" id="stampIn" type="button">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2Zm1 11.414V7h-2v7.414l4.293 4.293 1.414-1.414L13 13.414Z"/></svg>
                         Entrata ora
@@ -722,6 +727,44 @@ using (auth.uid() = user_id);</pre>
         </section>
     </main>
 
+    <div class="access-modal" id="accessModal" hidden>
+        <div class="access-dialog" role="dialog" aria-modal="true" aria-labelledby="accessTitle">
+            <div class="access-head">
+                <h2 id="accessTitle">Access</h2>
+                <button class="icon-btn" id="closeAccess" type="button" aria-label="Chiudi accesso">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18.3 5.71 12 12l6.3 6.29-1.41 1.41L10.59 13.41 4.29 19.71 2.88 18.3 9.17 12 2.88 5.71 4.29 4.29l6.3 6.3 6.29-6.3 1.42 1.42Z"/></svg>
+                </button>
+            </div>
+            <section class="sync-card">
+                <h2>Cloud sync <span class="sync-status" id="syncStatus">Locale</span></h2>
+                <label>
+                    Supabase URL
+                    <input id="supabaseUrl" type="url" placeholder="https://...supabase.co">
+                </label>
+                <label>
+                    Supabase anon key
+                    <input id="supabaseAnonKey" type="password" placeholder="eyJ...">
+                </label>
+                <button class="btn secondary" id="saveCloudConfig" type="button">Salva cloud</button>
+                <label>
+                    Email
+                    <input id="syncEmail" type="email" autocomplete="email" placeholder="you@example.com">
+                </label>
+                <label>
+                    Password
+                    <input id="syncPassword" type="password" autocomplete="current-password" placeholder="Minimo 6 caratteri">
+                </label>
+                <div class="button-row">
+                    <button class="btn" id="signIn" type="button">Accedi</button>
+                    <button class="btn secondary" id="signUp" type="button">Crea account</button>
+                    <button class="btn secondary" id="signOut" type="button">Esci</button>
+                    <button class="btn secondary" id="syncNow" type="button">Sincronizza</button>
+                </div>
+                <p class="hint" id="syncHint">Le giornate usano 8 ore richieste e 45 minuti di pausa come valori standard.</p>
+            </section>
+        </div>
+    </div>
+
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <script>
@@ -767,7 +810,10 @@ using (auth.uid() = user_id);</pre>
             syncEmail: document.getElementById("syncEmail"),
             syncPassword: document.getElementById("syncPassword"),
             syncStatus: document.getElementById("syncStatus"),
-            syncHint: document.getElementById("syncHint")
+            syncHint: document.getElementById("syncHint"),
+            accessModal: document.getElementById("accessModal"),
+            openAccess: document.getElementById("openAccess"),
+            closeAccess: document.getElementById("closeAccess")
         };
 
         function todayISO() {
@@ -1123,6 +1169,25 @@ using (auth.uid() = user_id);</pre>
             els.liveClock.textContent = now.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
             els.todayLabel.textContent = `${weekdays[now.getDay()]} ${now.toLocaleDateString("it-IT")}`;
         }
+
+        function openAccessPanel() {
+            els.accessModal.hidden = false;
+            els.syncEmail.focus();
+        }
+
+        function closeAccessPanel() {
+            els.accessModal.hidden = true;
+            els.openAccess.focus();
+        }
+
+        els.openAccess.addEventListener("click", openAccessPanel);
+        els.closeAccess.addEventListener("click", closeAccessPanel);
+        els.accessModal.addEventListener("click", (event) => {
+            if (event.target === els.accessModal) closeAccessPanel();
+        });
+        window.addEventListener("keydown", (event) => {
+            if (event.key === "Escape" && !els.accessModal.hidden) closeAccessPanel();
+        });
 
 
         document.getElementById("stampIn").addEventListener("click", () => {
