@@ -6,10 +6,14 @@ create table if not exists public.tea_entries (
   out_time text,
   break_minutes integer not null default 0,
   target_hours numeric not null default 8,
+  is_smwk boolean not null default false,
   note text not null default '',
   updated_at timestamptz not null default now(),
   unique (user_id, date)
 );
+
+alter table public.tea_entries
+add column if not exists is_smwk boolean not null default false;
 
 alter table public.tea_entries enable row level security;
 

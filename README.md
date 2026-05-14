@@ -5,7 +5,7 @@ TEA is a personal office time tracker for ingress/egress logging, daily balances
 ## Cloud sync setup
 
 1. Create a Supabase project.
-2. Open the Supabase SQL editor and run `supabase-schema.sql`.
+2. Open the Supabase SQL editor and run `supabase-schema.sql`. Re-run it after updates too; it is safe to run again and adds new columns such as `is_smwk`.
 3. In Supabase Auth URL Configuration, set **Site URL** to:
    `https://andre9ls.github.io/TEA/`
 4. In the same Supabase Auth URL Configuration screen, add this **Redirect URL**:
