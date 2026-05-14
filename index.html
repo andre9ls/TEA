@@ -576,9 +576,9 @@
                     <small id="todayBalance">Nessun dato</small>
                 </article>
                 <article class="metric">
-                    <span>Settimana</span>
-                    <strong id="weekWorked">0h 00m</strong>
-                    <small id="weekBalance">Saldo 0h 00m</small>
+                    <span>Straordinario mese</span>
+                    <strong id="monthOvertime">0h 00m</strong>
+                    <small id="monthOvertimeRule">Soglia 30m, blocchi 15m</small>
                 </article>
                 <article class="metric">
                     <span>Mese</span>
@@ -751,8 +751,7 @@ using (auth.uid() = user_id);</pre>
             formBalance: document.getElementById("formBalance"),
             todayWorked: document.getElementById("todayWorked"),
             todayBalance: document.getElementById("todayBalance"),
-            weekWorked: document.getElementById("weekWorked"),
-            weekBalance: document.getElementById("weekBalance"),
+            monthOvertime: document.getElementById("monthOvertime"),
             monthWorked: document.getElementById("monthWorked"),
             monthBalance: document.getElementById("monthBalance"),
             daysCount: document.getElementById("daysCount"),
@@ -811,6 +810,12 @@ using (auth.uid() = user_id);</pre>
 
         function balanceMinutes(entry) {
             return workedMinutes(entry) - Number(entry.targetHours || DEFAULT_TARGET_HOURS) * 60;
+        }
+
+        function overtimeMinutes(entry) {
+            const balance = balanceMinutes(entry);
+            if (!isComplete(entry) || balance < 30) return 0;
+            return Math.floor(balance / 15) * 15;
         }
 
         function saveAll() {
@@ -1006,20 +1011,8 @@ using (auth.uid() = user_id);</pre>
             const complete = entries.filter(isComplete);
             const worked = complete.reduce((sum, entry) => sum + workedMinutes(entry), 0);
             const balance = complete.reduce((sum, entry) => sum + balanceMinutes(entry), 0);
-            return { worked, balance, days: complete.length };
-        }
-
-        function weekBounds(dateText) {
-            const date = new Date(`${dateText}T12:00:00`);
-            const day = date.getDay() || 7;
-            const start = new Date(date);
-            start.setDate(date.getDate() - day + 1);
-            const end = new Date(start);
-            end.setDate(start.getDate() + 6);
-            return {
-                start: start.toISOString().slice(0, 10),
-                end: end.toISOString().slice(0, 10)
-            };
+            const overtime = complete.reduce((sum, entry) => sum + overtimeMinutes(entry), 0);
+            return { worked, balance, overtime, days: complete.length };
         }
 
         function renderDashboard() {
@@ -1030,16 +1023,12 @@ using (auth.uid() = user_id);</pre>
             els.todayBalance.textContent = todayComplete ? `Saldo ${minutesToDuration(todayBalanceValue)}` : today?.in ? "Giornata in corso" : "Nessun dato";
             els.todayBalance.className = todayBalanceValue >= 0 ? "positive" : "negative";
 
-            const bounds = weekBounds(todayISO());
-            const weekEntries = state.entries.filter((entry) => entry.date >= bounds.start && entry.date <= bounds.end);
             const monthEntries = state.entries.filter((entry) => parseMonth(entry.date) === parseMonth(todayISO()));
             const all = aggregate(state.entries);
-            const week = aggregate(weekEntries);
             const month = aggregate(monthEntries);
 
-            els.weekWorked.textContent = minutesToDuration(week.worked);
-            els.weekBalance.textContent = `Saldo ${minutesToDuration(week.balance)}`;
-            els.weekBalance.className = week.balance >= 0 ? "positive" : "negative";
+            els.monthOvertime.textContent = minutesToDuration(month.overtime);
+            els.monthOvertime.className = month.overtime > 0 ? "positive" : "";
             els.monthWorked.textContent = minutesToDuration(month.worked);
             els.monthBalance.textContent = `Saldo ${minutesToDuration(month.balance)}`;
             els.monthBalance.className = month.balance >= 0 ? "positive" : "negative";
