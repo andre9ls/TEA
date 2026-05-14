@@ -727,6 +727,8 @@ using (auth.uid() = user_id);</pre>
     <script>
         const STORAGE_KEY = "tea-office-tracker";
         const CLOUD_CONFIG_KEY = "tea-office-cloud-config";
+        const AUTH_STORAGE_KEY = "tea-office-supabase-auth";
+        const LAST_EMAIL_KEY = "tea-office-last-email";
         const DEFAULT_TARGET_HOURS = 8;
         const DEFAULT_BREAK_MINUTES = 45;
         const PUBLIC_APP_URL = "https://andre9ls.github.io/TEA/";
@@ -734,7 +736,7 @@ using (auth.uid() = user_id);</pre>
         const state = {
             entries: [],
             selectedDate: todayISO(),
-            sync: { client: null, user: null, config: null, busy: false }
+            sync: { client: null, user: null, config: null, busy: false, initialized: false }
         };
 
         const els = {
@@ -832,6 +834,7 @@ using (auth.uid() = user_id);</pre>
             state.sync.config = config;
             els.supabaseUrl.value = config?.url || "";
             els.supabaseAnonKey.value = config?.anonKey || "";
+            els.syncEmail.value = localStorage.getItem(LAST_EMAIL_KEY) || els.syncEmail.value;
             if (!config?.url || !config?.anonKey) {
                 state.sync.client = null;
                 renderSyncState("Locale", "Configura Supabase per sincronizzare i dati.");
@@ -841,7 +844,15 @@ using (auth.uid() = user_id);</pre>
                 renderSyncState("Offline", "La libreria Supabase non e disponibile.");
                 return;
             }
-            state.sync.client = window.supabase.createClient(config.url, config.anonKey);
+            state.sync.client = window.supabase.createClient(config.url, config.anonKey, {
+                auth: {
+                    storageKey: AUTH_STORAGE_KEY,
+                    persistSession: true,
+                    autoRefreshToken: true,
+                    detectSessionInUrl: true
+                }
+            });
+            state.sync.initialized = false;
         }
 
         function renderSyncState(label, hint) {
@@ -853,23 +864,31 @@ using (auth.uid() = user_id);</pre>
             loadCloudConfig();
             if (!state.sync.client) return;
             try {
+                if (!state.sync.initialized) {
+                    state.sync.client.auth.onAuthStateChange((event, session) => {
+                        state.sync.user = session?.user || null;
+                        if (state.sync.user) {
+                            localStorage.setItem(LAST_EMAIL_KEY, state.sync.user.email || "");
+                            els.syncEmail.value = state.sync.user.email || els.syncEmail.value;
+                            renderSyncState("Cloud", event === "INITIAL_SESSION" ? "Sessione ripristinata. Sincronizzo..." : `Connesso come ${state.sync.user.email}`);
+                            syncAll();
+                        } else if (event === "SIGNED_OUT") {
+                            renderSyncState("Locale", "Accesso cloud non attivo.");
+                        }
+                    });
+                    state.sync.initialized = true;
+                }
+
                 const { data, error } = await state.sync.client.auth.getSession();
                 if (error) throw error;
                 state.sync.user = data.session?.user || null;
-                state.sync.client.auth.onAuthStateChange((_event, session) => {
-                    state.sync.user = session?.user || null;
-                    if (state.sync.user) {
-                        renderSyncState("Cloud", `Connesso come ${state.sync.user.email}`);
-                        syncAll();
-                    } else {
-                        renderSyncState("Locale", "Accesso cloud non attivo.");
-                    }
-                });
                 if (state.sync.user) {
-                    renderSyncState("Cloud", `Connesso come ${state.sync.user.email}`);
+                    localStorage.setItem(LAST_EMAIL_KEY, state.sync.user.email || "");
+                    els.syncEmail.value = state.sync.user.email || els.syncEmail.value;
+                    renderSyncState("Cloud", "Sessione ripristinata. Sincronizzo...");
                     await syncAll();
                 } else {
-                    renderSyncState("Pronto", "Accedi con email e password per attivare la sincronizzazione.");
+                    renderSyncState("Pronto", "Accedi una volta: poi TEA sincronizza automaticamente su questo browser.");
                 }
             } catch (error) {
                 renderSyncState("Errore", error.message);
@@ -1203,6 +1222,7 @@ using (auth.uid() = user_id);</pre>
             try {
                 const { error } = await state.sync.client.auth.signInWithPassword({ email, password });
                 if (error) throw error;
+                localStorage.setItem(LAST_EMAIL_KEY, email);
                 renderSyncState("Cloud", `Connesso come ${email}`);
                 toast("Accesso completato");
                 await syncAll();
@@ -1224,6 +1244,7 @@ using (auth.uid() = user_id);</pre>
                     options: { emailRedirectTo: PUBLIC_APP_URL }
                 });
                 if (error) throw error;
+                localStorage.setItem(LAST_EMAIL_KEY, email);
                 if (data.session) {
                     state.sync.user = data.user;
                     renderSyncState("Cloud", `Account creato per ${email}`);
@@ -1241,6 +1262,7 @@ using (auth.uid() = user_id);</pre>
             if (!state.sync.client) return;
             await state.sync.client.auth.signOut();
             state.sync.user = null;
+            localStorage.removeItem(AUTH_STORAGE_KEY);
             renderSyncState("Locale", "Accesso cloud non attivo.");
             toast("Logout completato");
         });
@@ -1249,6 +1271,14 @@ using (auth.uid() = user_id);</pre>
             if (!state.sync.client || !state.sync.user) return toast("Accedi al cloud prima di sincronizzare");
             await syncAll();
             toast("Sincronizzazione completata");
+        });
+
+        window.addEventListener("focus", () => {
+            if (state.sync.client && state.sync.user) syncAll();
+        });
+
+        document.addEventListener("visibilitychange", () => {
+            if (!document.hidden && state.sync.client && state.sync.user) syncAll();
         });
 
         document.getElementById("exportCsv").addEventListener("click", () => {
