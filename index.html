@@ -355,10 +355,10 @@
 
         .checkline {
             grid-template-columns: auto 1fr;
-            align-items: center;
-            align-content: center;
+            align-items: end;
+            align-content: end;
             min-height: 44px;
-            padding-top: 24px;
+            padding-bottom: 2px;
         }
 
         .checkline input {
@@ -366,12 +366,6 @@
             min-height: 18px;
             height: 18px;
             accent-color: var(--green);
-        }
-
-        .status-strip {
-            display: grid;
-            gap: 10px;
-            margin-top: 15px;
         }
 
         details.schema {
@@ -394,16 +388,6 @@
             color: #34383d;
             font-size: 0.82rem;
             line-height: 1.45;
-        }
-
-        .status-item {
-            display: flex;
-            justify-content: space-between;
-            gap: 12px;
-            padding: 11px 12px;
-            border-radius: 6px;
-            background: #f8f7f3;
-            border: 1px solid var(--line);
         }
 
         .history-tools {
@@ -620,9 +604,13 @@
                     </div>
 
                     <form id="entryForm" class="form-grid">
-                        <label class="wide">
+                        <label>
                             Data
                             <input id="entryDate" type="date" required>
+                        </label>
+                        <label class="checkline">
+                            <input id="entrySmwk" type="checkbox">
+                            SMWK
                         </label>
                         <label>
                             Entrata
@@ -632,22 +620,6 @@
                             Uscita
                             <input id="entryOut" type="time">
                         </label>
-                        <label>
-                            Pausa minuti
-                            <input id="entryBreak" type="number" min="0" max="240" step="5">
-                        </label>
-                        <label>
-                            Ore target
-                            <input id="entryTarget" type="number" min="1" max="14" step="0.25">
-                        </label>
-                        <label class="checkline">
-                            <input id="entrySmwk" type="checkbox">
-                            SMWK
-                        </label>
-                        <label class="wide">
-                            Note
-                            <textarea id="entryNote" placeholder="Riunioni, smart working, permessi..."></textarea>
-                        </label>
                         <div class="button-row wide">
                             <button class="btn" type="submit">
                                 <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17Z"/></svg>
@@ -656,17 +628,6 @@
                             <button class="btn secondary" id="deleteEntry" type="button">Elimina</button>
                         </div>
                     </form>
-
-                    <div class="status-strip">
-                        <div class="status-item">
-                            <span>Ore nette</span>
-                            <strong id="formWorked">0h 00m</strong>
-                        </div>
-                        <div class="status-item">
-                            <span>Saldo giornata</span>
-                            <strong id="formBalance">0h 00m</strong>
-                        </div>
-                    </div>
                 </article>
 
                 <article class="panel">
@@ -812,13 +773,8 @@ using (auth.uid() = user_id);</pre>
             entryDate: document.getElementById("entryDate"),
             entryIn: document.getElementById("entryIn"),
             entryOut: document.getElementById("entryOut"),
-            entryBreak: document.getElementById("entryBreak"),
-            entryTarget: document.getElementById("entryTarget"),
             entrySmwk: document.getElementById("entrySmwk"),
-            entryNote: document.getElementById("entryNote"),
             entryForm: document.getElementById("entryForm"),
-            formWorked: document.getElementById("formWorked"),
-            formBalance: document.getElementById("formBalance"),
             todayWorked: document.getElementById("todayWorked"),
             todayBalance: document.getElementById("todayBalance"),
             monthOvertime: document.getElementById("monthOvertime"),
@@ -1074,11 +1030,7 @@ using (auth.uid() = user_id);</pre>
             els.entryDate.value = date;
             els.entryIn.value = existing?.in || "";
             els.entryOut.value = existing?.out || "";
-            els.entryBreak.value = existing?.breakMinutes ?? DEFAULT_BREAK_MINUTES;
-            els.entryTarget.value = existing?.targetHours ?? DEFAULT_TARGET_HOURS;
             els.entrySmwk.checked = Boolean(existing?.smwk);
-            els.entryNote.value = existing?.note || "";
-            renderFormPreview();
         }
 
         function readFormEntry() {
@@ -1086,19 +1038,11 @@ using (auth.uid() = user_id);</pre>
                 date: els.entryDate.value,
                 in: els.entryIn.value,
                 out: els.entryOut.value,
-                breakMinutes: Number(els.entryBreak.value || 0),
-                targetHours: Number(els.entryTarget.value || DEFAULT_TARGET_HOURS),
+                breakMinutes: DEFAULT_BREAK_MINUTES,
+                targetHours: DEFAULT_TARGET_HOURS,
                 smwk: els.entrySmwk.checked,
-                note: els.entryNote.value.trim()
+                note: ""
             };
-        }
-
-        function renderFormPreview() {
-            const entry = readFormEntry();
-            const balance = balanceMinutes(entry);
-            els.formWorked.textContent = minutesToDuration(workedMinutes(entry));
-            els.formBalance.textContent = minutesToDuration(balance);
-            els.formBalance.className = balance >= 0 ? "positive" : "negative";
         }
 
         function aggregate(entries) {
@@ -1185,7 +1129,6 @@ using (auth.uid() = user_id);</pre>
         function renderAll() {
             renderDashboard();
             renderHistory();
-            renderFormPreview();
         }
 
         function toast(message) {
@@ -1280,16 +1223,11 @@ using (auth.uid() = user_id);</pre>
             toast("Giornata salvata");
         });
 
-        ["input", "change"].forEach((eventName) => {
-            els.entryForm.addEventListener(eventName, renderFormPreview);
-        });
-
         els.entrySmwk.addEventListener("change", () => {
             if (els.entrySmwk.checked) {
                 els.entryIn.value = "07:45";
                 els.entryOut.value = "16:30";
             }
-            renderFormPreview();
         });
 
         els.entryDate.addEventListener("change", () => selectDate(els.entryDate.value));
