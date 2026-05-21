@@ -354,21 +354,6 @@
         .form-grid .wide {
             grid-column: 1 / -1;
         }
-
-
-        details.schema {
-            margin-top: 16px;
-            border: 1px solid var(--line);
-            border-radius: 8px;
-            background: #fbfaf7;
-        }
-
-        details.schema summary {
-            cursor: pointer;
-            padding: 13px;
-            font-weight: 800;
-        }
-
         pre {
             overflow-x: auto;
             margin: 0;
@@ -563,11 +548,6 @@
 
             <section class="dashboard" aria-label="Dashboard">
                 <article class="metric">
-                    <span>Oggi</span>
-                    <strong id="todayWorked">0h 00m</strong>
-                    <small id="todayBalance">Nessun dato</small>
-                </article>
-                <article class="metric">
                     <span>Straordinario</span>
                     <strong id="monthOvertime">0h 00m</strong>
                     <small id="monthOvertimeRule">Soglia 30m, blocchi 15m</small>
@@ -657,62 +637,6 @@
                             <tbody id="historyBody"></tbody>
                         </table>
                     </div>
-
-                    <details class="schema">
-                        <summary>Schema Supabase</summary>
-                        <pre id="schemaSql">create table if not exists public.tea_entries (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null default auth.uid(),
-  date date not null,
-  in_time text,
-  out_time text,
-  break_minutes integer not null default 0,
-  target_hours numeric not null default 8,
-  is_smwk boolean not null default false,
-  permesso text not null default '',
-  note text not null default '',
-  updated_at timestamptz not null default now(),
-  unique (user_id, date)
-);
-
-alter table public.tea_entries
-add column if not exists is_smwk boolean not null default false;
-
-alter table public.tea_entries
-add column if not exists permesso text not null default '';
-
-update public.tea_entries
-set permesso = 'SMART'
-where is_smwk = true and coalesce(permesso, '') = '';
-
-alter table public.tea_entries enable row level security;
-
-drop policy if exists "tea entries select own" on public.tea_entries;
-drop policy if exists "tea entries insert own" on public.tea_entries;
-drop policy if exists "tea entries update own" on public.tea_entries;
-drop policy if exists "tea entries delete own" on public.tea_entries;
-
-create policy "tea entries select own"
-on public.tea_entries for select
-to authenticated
-using (auth.uid() = user_id);
-
-create policy "tea entries insert own"
-on public.tea_entries for insert
-to authenticated
-with check (auth.uid() = user_id);
-
-create policy "tea entries update own"
-on public.tea_entries for update
-to authenticated
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
-
-create policy "tea entries delete own"
-on public.tea_entries for delete
-to authenticated
-using (auth.uid() = user_id);</pre>
-                    </details>
                 </article>
             </section>
         </section>
@@ -781,8 +705,6 @@ using (auth.uid() = user_id);</pre>
             entryOut: document.getElementById("entryOut"),
             entryPermesso: document.getElementById("entryPermesso"),
             entryForm: document.getElementById("entryForm"),
-            todayWorked: document.getElementById("todayWorked"),
-            todayBalance: document.getElementById("todayBalance"),
             monthOvertime: document.getElementById("monthOvertime"),
             monthMinutini: document.getElementById("monthMinutini"),
             monthWorked: document.getElementById("monthWorked"),
@@ -1068,13 +990,6 @@ using (auth.uid() = user_id);</pre>
         }
 
         function renderDashboard() {
-            const today = getEntry(todayISO());
-            const todayComplete = isComplete(today);
-            const todayBalanceValue = todayComplete ? balanceMinutes(today) : 0;
-            els.todayWorked.textContent = minutesToDuration(workedMinutes(today));
-            els.todayBalance.textContent = todayComplete ? `Saldo ${minutesToDuration(todayBalanceValue)}` : today?.in ? "Giornata in corso" : "Nessun dato";
-            els.todayBalance.className = todayBalanceValue >= 0 ? "positive" : "negative";
-
             const monthEntries = state.entries.filter((entry) => parseMonth(entry.date) === parseMonth(todayISO()));
             const month = aggregate(monthEntries);
 
