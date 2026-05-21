@@ -646,7 +646,6 @@
                                     <th>Nette</th>
                                     <th>Saldo</th>
                                     <th>Permesso</th>
-                                    <th>Note</th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -1090,7 +1089,6 @@ using (auth.uid() = user_id);</pre>
             els.historyBody.innerHTML = rows.map((entry) => {
                 const balance = balanceMinutes(entry);
                 const badgeClass = balance >= 0 ? "ok" : "low";
-                const note = entry.note ? escapeHTML(entry.note) : "-";
                 const permessoLabel = entry.permesso || (entry.smwk ? "SMART" : "-");
                 const balanceLabel = isComplete(entry) ? minutesToDuration(balance) : "In corso";
                 return `
@@ -1101,7 +1099,6 @@ using (auth.uid() = user_id);</pre>
                         <td>${minutesToDuration(workedMinutes(entry))}</td>
                         <td><span class="badge ${badgeClass}">${balanceLabel}</span></td>
                         <td>${permessoLabel}</td>
-                        <td>${note}</td>
                         <td>
                             <div class="row-actions">
                                 <button class="icon-btn" type="button" title="Modifica" aria-label="Modifica ${entry.date}" data-edit="${entry.date}">
@@ -1329,7 +1326,7 @@ using (auth.uid() = user_id);</pre>
         });
 
         document.getElementById("exportCsv").addEventListener("click", () => {
-            const header = ["data", "entrata", "uscita", "pausa_minuti", "ore_nette", "saldo", "permesso", "note"];
+            const header = ["data", "entrata", "uscita", "pausa_minuti", "ore_nette", "saldo", "permesso"];
             const rows = state.entries.map((entry) => [
                 entry.date,
                 entry.in,
@@ -1337,8 +1334,7 @@ using (auth.uid() = user_id);</pre>
                 entry.breakMinutes,
                 minutesToDuration(workedMinutes(entry)),
                 minutesToDuration(balanceMinutes(entry)),
-                entry.permesso || (entry.smwk ? "SMART" : ""),
-                entry.note || ""
+                entry.permesso || (entry.smwk ? "SMART" : "")
             ]);
             const csv = [header, ...rows].map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
             const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
