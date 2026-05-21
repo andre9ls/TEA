@@ -568,9 +568,14 @@
                     <small id="todayBalance">Nessun dato</small>
                 </article>
                 <article class="metric">
-                    <span>Straordinario mese</span>
+                    <span>Straordinario</span>
                     <strong id="monthOvertime">0h 00m</strong>
                     <small id="monthOvertimeRule">Soglia 30m, blocchi 15m</small>
+                </article>
+                <article class="metric">
+                    <span>Minutini</span>
+                    <strong id="monthMinutini">0h 00m</strong>
+                    <small>Residuo STRAO</small>
                 </article>
                 <article class="metric">
                     <span>Mese</span>
@@ -779,6 +784,7 @@ using (auth.uid() = user_id);</pre>
             todayWorked: document.getElementById("todayWorked"),
             todayBalance: document.getElementById("todayBalance"),
             monthOvertime: document.getElementById("monthOvertime"),
+            monthMinutini: document.getElementById("monthMinutini"),
             monthWorked: document.getElementById("monthWorked"),
             monthBalance: document.getElementById("monthBalance"),
             smartDaysCount: document.getElementById("smartDaysCount"),
@@ -1049,11 +1055,16 @@ using (auth.uid() = user_id);</pre>
 
         function aggregate(entries) {
             const complete = entries.filter(isComplete);
+            const straoComplete = complete.filter((entry) => entry.permesso === "STRAO");
             const worked = complete.reduce((sum, entry) => sum + workedMinutes(entry), 0);
             const balance = complete.reduce((sum, entry) => sum + balanceMinutes(entry), 0);
-            const overtime = complete.reduce((sum, entry) => sum + overtimeMinutes(entry), 0);
+            const overtime = straoComplete.reduce((sum, entry) => sum + overtimeMinutes(entry), 0);
+            const minutini = straoComplete.reduce((sum, entry) => {
+                const dailyBalance = Math.max(0, balanceMinutes(entry));
+                return sum + dailyBalance - overtimeMinutes(entry);
+            }, 0);
             const smartDays = entries.filter((entry) => entry.permesso === "SMART" || entry.smwk).length;
-            return { worked, balance, overtime, smartDays, days: complete.length };
+            return { worked, balance, overtime, minutini, smartDays, days: complete.length };
         }
 
         function renderDashboard() {
@@ -1069,6 +1080,8 @@ using (auth.uid() = user_id);</pre>
 
             els.monthOvertime.textContent = minutesToDuration(month.overtime);
             els.monthOvertime.className = month.overtime > 0 ? "positive" : "";
+            els.monthMinutini.textContent = minutesToDuration(month.minutini);
+            els.monthMinutini.className = month.minutini > 0 ? "positive" : "";
             els.monthWorked.textContent = minutesToDuration(month.worked);
             els.monthBalance.textContent = `Saldo ${minutesToDuration(month.balance)}`;
             els.monthBalance.className = month.balance >= 0 ? "positive" : "negative";
