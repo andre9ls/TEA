@@ -563,7 +563,7 @@
                 <article class="metric">
                     <span>Minutini</span>
                     <strong id="monthMinutini">0h 00m</strong>
-                    <small>Saldo 1-29 + residui extra</small>
+                    <small id="monthMinutiniRange">Bimestre corrente</small>
                 </article>
                 <article class="metric">
                     <span>Mese</span>
@@ -716,6 +716,7 @@
             monthOvertime: document.getElementById("monthOvertime"),
             monthBncore: document.getElementById("monthBncore"),
             monthMinutini: document.getElementById("monthMinutini"),
+            monthMinutiniRange: document.getElementById("monthMinutiniRange"),
             monthWorked: document.getElementById("monthWorked"),
             monthBalance: document.getElementById("monthBalance"),
             smartDaysCount: document.getElementById("smartDaysCount"),
@@ -757,6 +758,18 @@
 
         function parseMonth(date) {
             return date.slice(0, 7);
+        }
+
+        function parseBimonth(date) {
+            const [year, month] = date.split("-").map(Number);
+            const startMonth = Math.floor((month - 1) / 2) * 2 + 1;
+            const endMonth = startMonth + 1;
+            const startLabel = String(startMonth).padStart(2, "0");
+            const endLabel = String(endMonth).padStart(2, "0");
+            return {
+                key: year + "-" + startLabel,
+                label: startLabel + "/" + year + " - " + endLabel + "/" + year
+            };
         }
 
         function getEntry(date) {
@@ -1006,20 +1019,25 @@
         }
 
         function renderDashboard() {
-            const monthEntries = state.entries.filter((entry) => parseMonth(entry.date) === parseMonth(todayISO()));
+            const today = todayISO();
+            const activeBimonth = parseBimonth(today);
+            const monthEntries = state.entries.filter((entry) => parseMonth(entry.date) === parseMonth(today));
+            const bimonthEntries = state.entries.filter((entry) => parseBimonth(entry.date).key === activeBimonth.key);
             const month = aggregate(monthEntries);
+            const bimonth = aggregate(bimonthEntries);
 
             els.monthOvertime.textContent = minutesToDuration(month.overtime);
             els.monthOvertime.className = month.overtime > 0 ? "positive" : "";
             els.monthBncore.textContent = minutesToDuration(month.bncore);
             els.monthBncore.className = month.bncore > 0 ? "positive" : "";
-            els.monthMinutini.textContent = minutesToDuration(month.minutini);
-            els.monthMinutini.className = month.minutini > 0 ? "positive" : "";
+            els.monthMinutini.textContent = minutesToDuration(bimonth.minutini);
+            els.monthMinutini.className = bimonth.minutini > 0 ? "positive" : "";
+            els.monthMinutiniRange.textContent = activeBimonth.label;
             els.monthWorked.textContent = minutesToDuration(month.worked);
             els.monthBalance.textContent = `Saldo ${minutesToDuration(month.balance)}`;
             els.monthBalance.className = month.balance >= 0 ? "positive" : "negative";
             els.smartDaysCount.textContent = String(month.smartDays);
-            els.smartDaysRange.textContent = `Mese ${parseMonth(todayISO())}`;
+            els.smartDaysRange.textContent = `Mese ${parseMonth(today)}`;
         }
 
         function renderHistory() {
