@@ -407,6 +407,18 @@
             background: #fbfaf7;
         }
 
+        .week-divider td {
+            padding: 10px 12px;
+            border-top: 3px solid #222831;
+            border-bottom: 1px solid #222831;
+            background: #f3efe6;
+            color: #222831;
+            font-size: 0.78rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
         tr:last-child td {
             border-bottom: 0;
         }
@@ -760,6 +772,24 @@
             return date.slice(0, 7);
         }
 
+        function weekStartISO(dateText) {
+            const date = new Date(dateText + "T12:00:00");
+            const day = date.getDay() || 7;
+            date.setDate(date.getDate() - day + 1);
+            return date.toISOString().slice(0, 10);
+        }
+
+        function shortDate(date) {
+            return String(date.getDate()).padStart(2, "0") + "/" + String(date.getMonth() + 1).padStart(2, "0");
+        }
+
+        function formatWeekRange(dateText) {
+            const start = new Date(weekStartISO(dateText) + "T12:00:00");
+            const end = new Date(start);
+            end.setDate(start.getDate() + 6);
+            return "Settimana " + shortDate(start) + " - " + shortDate(end);
+        }
+
         function parseBimonth(date) {
             const [year, month] = date.split("-").map(Number);
             const startMonth = Math.floor((month - 1) / 2) * 2 + 1;
@@ -1046,16 +1076,22 @@
             els.historyRange.textContent = filter ? `Mese ${filter}` : "Tutto lo storico";
 
             if (!rows.length) {
-                els.historyBody.innerHTML = `<tr><td colspan="8" class="empty">Nessuna giornata registrata.</td></tr>`;
+                els.historyBody.innerHTML = `<tr><td colspan="7" class="empty">Nessuna giornata registrata.</td></tr>`;
                 return;
             }
 
-            els.historyBody.innerHTML = rows.map((entry) => {
+            els.historyBody.innerHTML = rows.map((entry, index) => {
                 const balance = balanceMinutes(entry);
                 const badgeClass = balance >= 0 ? "ok" : "low";
                 const permessoLabel = entry.permesso || (entry.smwk ? "SMART" : "-");
                 const balanceLabel = isComplete(entry) ? minutesToDuration(balance) : "In corso";
+                const weekKey = weekStartISO(entry.date);
+                const previousWeekKey = index > 0 ? weekStartISO(rows[index - 1].date) : "";
+                const weekDivider = index === 0 || weekKey !== previousWeekKey
+                    ? "<tr class=\"week-divider\"><td colspan=\"7\">" + formatWeekRange(entry.date) + "</td></tr>"
+                    : "";
                 return `
+                    ${weekDivider}
                     <tr>
                         <td><strong>${formatDate(entry.date)}</strong></td>
                         <td>${entry.in || "-"}</td>
