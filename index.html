@@ -443,6 +443,18 @@
             color: var(--red);
         }
 
+        .planned-exit {
+            display: inline-flex;
+            align-items: center;
+            min-height: 28px;
+            border: 1px solid var(--amber);
+            border-radius: 999px;
+            padding: 0 10px;
+            background: var(--soft-amber);
+            color: var(--amber);
+            font-weight: 900;
+        }
+
         .empty {
             color: var(--muted);
             padding: 26px 12px;
@@ -768,6 +780,17 @@
             return `${sign}${Math.floor(abs / 60)}h ${String(abs % 60).padStart(2, "0")}m`;
         }
 
+        function minutesToTime(minutes) {
+            const normalized = ((Math.round(minutes) % 1440) + 1440) % 1440;
+            return String(Math.floor(normalized / 60)).padStart(2, "0") + ":" + String(normalized % 60).padStart(2, "0");
+        }
+
+        function plannedExitTime(entry) {
+            const start = minutesFromTime(entry?.in);
+            if (start === null) return "";
+            return minutesToTime(start + DEFAULT_TARGET_HOURS * 60 + DEFAULT_BREAK_MINUTES);
+        }
+
         function parseMonth(date) {
             return date.slice(0, 7);
         }
@@ -1085,6 +1108,10 @@
                 const badgeClass = balance >= 30 ? "ok" : "low";
                 const permessoLabel = entry.permesso || (entry.smwk ? "SMART" : "-");
                 const balanceLabel = isComplete(entry) ? minutesToDuration(balance) : "In corso";
+                const isTodayInProgress = entry.date === todayISO() && entry.in && !entry.out;
+                const outLabel = isTodayInProgress
+                    ? "<span class=\"planned-exit\">" + plannedExitTime(entry) + "</span>"
+                    : entry.out || "-";
                 const weekKey = weekStartISO(entry.date);
                 const previousWeekKey = index > 0 ? weekStartISO(rows[index - 1].date) : "";
                 const weekDivider = index === 0 || weekKey !== previousWeekKey
@@ -1095,7 +1122,7 @@
                     <tr>
                         <td><strong>${formatDate(entry.date)}</strong></td>
                         <td>${entry.in || "-"}</td>
-                        <td>${entry.out || "-"}</td>
+                        <td>${outLabel}</td>
                         <td>${minutesToDuration(workedMinutes(entry))}</td>
                         <td><span class="badge ${badgeClass}">${balanceLabel}</span></td>
                         <td>${permessoLabel}</td>
