@@ -1082,7 +1082,7 @@
 
             els.historyBody.innerHTML = rows.map((entry, index) => {
                 const balance = balanceMinutes(entry);
-                const badgeClass = balance >= 0 ? "ok" : "low";
+                const badgeClass = balance >= 30 ? "ok" : "low";
                 const permessoLabel = entry.permesso || (entry.smwk ? "SMART" : "-");
                 const balanceLabel = isComplete(entry) ? minutesToDuration(balance) : "In corso";
                 const weekKey = weekStartISO(entry.date);
