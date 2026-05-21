@@ -283,8 +283,8 @@
 
         .dashboard {
             display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 14px;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 10px;
         }
 
         .metric,
@@ -296,27 +296,30 @@
         }
 
         .metric {
-            padding: 17px;
+            padding: 14px;
             display: grid;
-            gap: 8px;
-            min-height: 118px;
+            gap: 7px;
+            min-height: 104px;
+            min-width: 0;
         }
 
         .metric span {
             color: var(--muted);
-            font-size: 0.85rem;
+            font-size: 0.76rem;
             font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: 0.06em;
+            letter-spacing: 0.04em;
         }
 
         .metric strong {
-            font-size: 1.7rem;
+            font-size: 1.42rem;
             line-height: 1.1;
         }
 
         .metric small {
             color: var(--muted);
+            font-size: 0.78rem;
+            line-height: 1.25;
         }
 
         .positive {
