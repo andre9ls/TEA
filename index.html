@@ -1124,9 +1124,9 @@
         }
 
         function renderDashboard() {
-            const today = todayISO();
-            const activeBimonth = parseBimonth(today);
-            const monthEntries = state.entries.filter((entry) => parseMonth(entry.date) === parseMonth(today));
+            const activeMonth = els.monthFilter.value || parseMonth(todayISO());
+            const activeBimonth = parseBimonth(activeMonth + "-01");
+            const monthEntries = state.entries.filter((entry) => parseMonth(entry.date) === activeMonth);
             const bimonthEntries = state.entries.filter((entry) => parseBimonth(entry.date).key === activeBimonth.key);
             const month = aggregate(monthEntries);
             const bimonth = aggregate(bimonthEntries);
@@ -1142,7 +1142,7 @@
             els.monthBalance.textContent = `Saldo ${minutesToDuration(month.balance)}`;
             els.monthBalance.className = month.balance >= 0 ? "positive" : "negative";
             els.smartDaysCount.textContent = String(month.smartDays);
-            els.smartDaysRange.textContent = `Mese ${parseMonth(today)}`;
+            els.smartDaysRange.textContent = "Mese " + activeMonth;
         }
 
         function renderHistory() {
@@ -1310,7 +1310,7 @@
         });
 
         els.entryDate.addEventListener("change", () => selectDate(els.entryDate.value));
-        els.monthFilter.addEventListener("change", renderHistory);
+        els.monthFilter.addEventListener("change", renderAll);
         els.historyBody.addEventListener("click", (event) => {
             const button = event.target.closest("[data-edit]");
             if (!button) return;
