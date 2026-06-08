@@ -939,7 +939,7 @@
                 is_smwk: entry.permesso === "SMART",
                 permesso: entry.permesso || "",
                 note: entry.note || "",
-                updated_at: new Date().toISOString()
+                updated_at: entry.updatedAt || new Date().toISOString()
             };
         }
 
@@ -951,7 +951,8 @@
                 breakMinutes: Number(row.break_minutes || 0),
                 targetHours: Number(row.target_hours || DEFAULT_TARGET_HOURS),
                 permesso: row.permesso || (row.is_smwk ? "SMART" : ""),
-                note: row.note || ""
+                note: row.note || "",
+                updatedAt: row.updated_at || ""
             };
         }
 
@@ -982,23 +983,67 @@
             }
         }
 
-        async function pushAllToCloud() {
-            if (!state.sync.client || !state.sync.user || !state.entries.length) return;
-            const rows = state.entries.map(entryToRow);
+        async function pushEntriesToCloud(entries) {
+            if (!state.sync.client || !state.sync.user || !entries.length) return;
+            const rows = entries.map(entryToRow);
             const { error } = await state.sync.client
                 .from("tea_entries")
                 .upsert(rows, { onConflict: "user_id,date" });
             if (error) throw error;
         }
 
-        async function pullCloudEntries() {
-            if (!state.sync.client || !state.sync.user) return;
+        async function fetchCloudRows() {
+            if (!state.sync.client || !state.sync.user) return [];
             const { data, error } = await state.sync.client
                 .from("tea_entries")
                 .select("*")
                 .order("date", { ascending: false });
             if (error) throw error;
-            state.entries = (data || []).map(rowToEntry);
+            return data || [];
+        }
+
+        function timestampValue(value) {
+            const parsed = Date.parse(value || "");
+            return Number.isFinite(parsed) ? parsed : 0;
+        }
+
+        function mergeEntriesForSync(localEntries, cloudRows) {
+            const cloudEntries = cloudRows.map(rowToEntry);
+            const localByDate = new Map(localEntries.map((entry) => [entry.date, entry]));
+            const cloudByDate = new Map(cloudEntries.map((entry) => [entry.date, entry]));
+            const dates = new Set([...localByDate.keys(), ...cloudByDate.keys()]);
+            const merged = [];
+            const entriesToPush = [];
+
+            dates.forEach((date) => {
+                const local = localByDate.get(date);
+                const cloud = cloudByDate.get(date);
+                if (!cloud && local) {
+                    local.updatedAt = local.updatedAt || new Date().toISOString();
+                    merged.push(local);
+                    entriesToPush.push(local);
+                    return;
+                }
+                if (!local && cloud) {
+                    merged.push(cloud);
+                    return;
+                }
+
+                if (timestampValue(local.updatedAt) > timestampValue(cloud.updatedAt)) {
+                    merged.push(local);
+                    entriesToPush.push(local);
+                } else {
+                    merged.push(cloud);
+                }
+            });
+
+            merged.sort((a, b) => b.date.localeCompare(a.date));
+            return { merged, entriesToPush };
+        }
+
+        async function pullCloudEntries() {
+            const cloudRows = await fetchCloudRows();
+            state.entries = cloudRows.map(rowToEntry);
             saveAll();
             selectDate(state.selectedDate || todayISO());
             renderAll();
@@ -1009,9 +1054,13 @@
             state.sync.busy = true;
             renderSyncState("Sync", "Sincronizzazione in corso...");
             try {
-                await pushAllToCloud();
+                const cloudRows = await fetchCloudRows();
+                const { merged, entriesToPush } = mergeEntriesForSync(state.entries, cloudRows);
+                state.entries = merged;
+                saveAll();
+                if (entriesToPush.length) await pushEntriesToCloud(entriesToPush);
                 await pullCloudEntries();
-                renderSyncState("Cloud", `Sincronizzato come ${state.sync.user.email}`);
+                renderSyncState("Cloud", "Sincronizzato come " + state.sync.user.email);
             } catch (error) {
                 renderSyncState("Errore", error.message);
             } finally {
@@ -1020,6 +1069,7 @@
         }
 
         function upsertEntry(entry) {
+            entry.updatedAt = new Date().toISOString();
             const index = state.entries.findIndex((item) => item.date === entry.date);
             if (index >= 0) {
                 state.entries[index] = entry;
